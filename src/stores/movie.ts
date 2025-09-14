@@ -9,6 +9,7 @@ export const useMovieStore = defineStore('movie', () => {
   const loading = ref(false)
   const hasMore = ref(true)
   const currentPage = ref(1)
+  const total = ref(0)  // 添加 total
   
   // 获取分类列表
   const fetchCategories = async () => {
@@ -25,18 +26,29 @@ export const useMovieStore = defineStore('movie', () => {
     loading.value = true
     try {
       const res = await movieApi.getList({
-        page: currentPage.value,
-        limit: 20,
+        page: params.page || currentPage.value,
+        limit: params.limit || 20,
         ...params
       })
       
-      if (append) {
-        movieList.value = [...movieList.value, ...res.data.list]
-      } else {
-        movieList.value = res.data.list
+      console.log('API响应:', res) // 调试日志
+      
+      // 更新总数 - 重要！
+      if (res.data && res.data.total !== undefined) {
+        total.value = res.data.total
+        console.log('设置total为:', total.value) // 调试日志
       }
       
-      hasMore.value = res.data.list.length === 20
+      // 更新列表
+      if (res.data && res.data.list) {
+        if (append) {
+          movieList.value = [...movieList.value, ...res.data.list]
+        } else {
+          movieList.value = res.data.list
+        }
+        
+        hasMore.value = res.data.list.length === (params.limit || 20)
+      }
     } catch (error) {
       console.error('获取影片列表失败:', error)
     } finally {
@@ -49,6 +61,7 @@ export const useMovieStore = defineStore('movie', () => {
     movieList.value = []
     currentPage.value = 1
     hasMore.value = true
+    total.value = 0  // 重置 total
   }
   
   return {
@@ -58,6 +71,7 @@ export const useMovieStore = defineStore('movie', () => {
     loading,
     hasMore,
     currentPage,
+    total,  // 导出 total
     fetchCategories,
     fetchMovieList,
     resetList
