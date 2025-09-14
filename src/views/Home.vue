@@ -1,38 +1,8 @@
 <template>
   <div class="home-page">
-    <!-- 广告轮播区域 - 新增部分 -->
-    <div class="ad-banner" v-if="adList.length > 0">
-      <!-- 单张广告 -->
-      <div v-if="adList.length === 1" class="ad-single">
-        <a :href="adList[0].jump_url || '#'" target="_blank">
-          <img :src="adList[0].img_url" :alt="adList[0].title" />
-        </a>
-      </div>
-      
-      <!-- 多张广告轮播 -->
-      <div v-else class="ad-carousel">
-        <!-- 移动端轮播 -->
-        <van-swipe v-if="deviceStore.isMobile" :autoplay="5000" indicator-color="#fff">
-          <van-swipe-item v-for="ad in adList" :key="ad.id">
-            <a :href="ad.jump_url || '#'" target="_blank">
-              <img :src="ad.img_url" :alt="ad.title" />
-            </a>
-          </van-swipe-item>
-        </van-swipe>
-        
-        <!-- PC端轮播 -->
-        <el-carousel v-else height="160px" :interval="5000">
-          <el-carousel-item v-for="ad in adList" :key="ad.id">
-            <a :href="ad.jump_url || '#'" target="_blank">
-              <img :src="ad.img_url" :alt="ad.title" />
-            </a>
-          </el-carousel-item>
-        </el-carousel>
-      </div>
-    </div>
-    <!-- 广告轮播区域结束 -->
+    <!-- 广告组件 -->
+    <AdBanner />
 
-    <!-- 以下是原来的代码，保持不变 -->
     <!-- 移动端视图 -->
     <div v-if="deviceStore.isMobile" class="mobile-view">
       <!-- 搜索栏 -->
@@ -50,7 +20,7 @@
             v-for="cat in categories" 
             :key="cat.id"
             :title="cat.name"
-            :name="cat.id"
+            :name="String(cat.id)"
           />
         </van-tabs>
       </div>
@@ -146,19 +116,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDeviceStore } from '@/stores/device'
 import { useMovieStore } from '@/stores/movie'
-import { adApi } from '@/api/ad'  // 新增：导入广告API
 import MovieCard from '@/components/MovieCard.vue'
 
 const router = useRouter()
 const deviceStore = useDeviceStore()
 const movieStore = useMovieStore()
-
-// 新增：广告数据
-const adList = ref([])
 
 // 搜索相关
 const searchKeyword = ref('')
@@ -169,57 +135,49 @@ const sortType = ref('latest')
 // 分页相关
 const currentPage = ref(1)
 const pageSize = ref(20)
-const total = ref(0)
 const loading = ref(false)
 const finished = ref(false)
 const refreshing = ref(false)
 
-// 数据
+// 从 store 获取数据
 const categories = computed(() => movieStore.categories)
 const movieList = computed(() => movieStore.movieList)
+const total = computed(() => movieStore.total)
+
+// 监听 currentPage 变化，同步到 store
+watch(currentPage, (newPage) => {
+  movieStore.currentPage = newPage
+})
 
 // 初始化
 onMounted(async () => {
-  loadAds()  // 新增：加载广告
   await movieStore.fetchCategories()
   await loadMovies()
 })
 
-// 新增：加载广告函数
-const loadAds = async () => {
-  try {
-    const res = await adApi.getAdList(1)  // type_id: 1 表示H5首页广告
-    if (res.code === 200 && res.data) {
-      // 过滤未过期的广告
-      const now = new Date()
-      adList.value = res.data.filter(ad => {
-        if (!ad.expired_time) return true
-        return new Date(ad.expired_time) > now
-      })
-    }
-  } catch (error) {
-    console.error('加载广告失败:', error)
-    adList.value = []
-  }
-}
-
 // 加载影片
 const loadMovies = async (append = false) => {
+  loading.value = true
+  
   const params = {
     page: currentPage.value,
     limit: pageSize.value,
-    type_id: selectedCategory.value || activeTab.value,
+    type_id: selectedCategory.value || parseInt(activeTab.value),
     keyword: searchKeyword.value,
     sort: sortType.value
   }
   
-  await movieStore.fetchMovieList(params, append)
+  try {
+    await movieStore.fetchMovieList(params, append)
+  } finally {
+    loading.value = false
+  }
 }
 
 // 移动端下拉刷新
 const onRefresh = async () => {
   currentPage.value = 1
-  loadAds()  // 新增：刷新时重新加载广告
+  movieStore.resetList()
   await loadMovies()
   refreshing.value = false
 }
@@ -233,7 +191,6 @@ const onLoad = async () => {
   
   currentPage.value++
   await loadMovies(true)
-  loading.value = false
   
   if (!movieStore.hasMore) {
     finished.value = true
@@ -269,8 +226,11 @@ const handleSortChange = () => {
 }
 
 // PC端分页
-const handlePageChange = () => {
+const handlePageChange = (page: number) => {
+  currentPage.value = page
   loadMovies()
+  // 滚动到顶部
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 // 跳转详情
@@ -282,104 +242,6 @@ const goDetail = (id: number) => {
 <style lang="scss" scoped>
 .home-page {
   width: 100%;
-  
-  /* 新增：广告轮播样式 */
-  .ad-banner {
-    width: 100%;
-    background: #fff;
-    margin-bottom: 10px;
-    padding: 0 10px; // 两端留白
-    
-    @media (min-width: 768px) {
-      padding: 0 20px; // PC端两端留更多白
-    }
-    
-    // 移动端轮播
-    .ad-swipe-mobile {
-      width: 100%;
-      height: 100px;
-      
-      :deep(.van-swipe-item) {
-        a {
-          display: block;
-          width: 100%;
-          height: 100%;
-        }
-        
-        img {
-          width: 100%;
-          height: 100%;
-          object-fit: contain; // 改为contain保持图片比例
-        }
-      }
-    }
-    
-    // PC端轮播
-    .ad-carousel-pc {
-      width: 100%;
-      position: relative; // 确保相对定位
-      
-      :deep(.el-carousel__item) {
-        a {
-          display: block;
-          width: 100%;
-          height: 100%;
-        }
-        
-        img {
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-        }
-      }
-      
-      // 强制显示箭头
-      :deep(.el-carousel__arrow) {
-        display: flex !important; // 强制显示
-        align-items: center;
-        justify-content: center;
-        background-color: rgba(31, 45, 61, 0.5) !important;
-        color: #fff !important;
-        font-size: 20px;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        z-index: 10; // 确保在最上层
-        
-        &:hover {
-          background-color: rgba(31, 45, 61, 0.8) !important;
-        }
-        
-        i {
-          font-size: 20px;
-        }
-      }
-      
-      // 左箭头位置
-      :deep(.el-carousel__arrow--left) {
-        left: 20px;
-      }
-      
-      // 右箭头位置  
-      :deep(.el-carousel__arrow--right) {
-        right: 20px;
-      }
-      
-      // 指示器样式
-      :deep(.el-carousel__indicators) {
-        bottom: 10px;
-        
-        .el-carousel__button {
-          background-color: rgba(255, 255, 255, 0.5);
-        }
-        
-        .is-active .el-carousel__button {
-          background-color: #fff;
-        }
-      }
-    }
-  }
-  /* 广告样式结束 */
   
   .mobile-view {
     .category-tabs {
@@ -411,9 +273,18 @@ const goDetail = (id: number) => {
       grid-template-columns: repeat(5, 1fr);
       gap: 20px;
       padding: 20px;
+      min-height: 500px;
       
       @media (max-width: 1400px) {
         grid-template-columns: repeat(4, 1fr);
+      }
+      
+      @media (max-width: 1200px) {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      @media (max-width: 992px) {
+        grid-template-columns: repeat(2, 1fr);
       }
     }
     
@@ -421,6 +292,39 @@ const goDetail = (id: number) => {
       display: flex;
       justify-content: center;
       padding: 20px;
+      
+      :deep(.el-pagination) {
+        .el-pager li,
+        .btn-prev,
+        .btn-next {
+          background-color: #fff;
+          border: 1px solid #dcdfe6;
+          
+          &:hover:not(.is-disabled):not(.active) {
+            color: #409eff;
+          }
+          
+          &.active {
+            background-color: #409eff;
+            color: #fff;
+            border-color: #409eff;
+          }
+          
+          &.is-disabled {
+            color: #c0c4cc;
+            cursor: not-allowed;
+          }
+        }
+        
+        .btn-prev,
+        .btn-next {
+          padding: 0 10px;
+          
+          &:not(.is-disabled):hover {
+            background-color: #f5f7fa;
+          }
+        }
+      }
     }
   }
 }

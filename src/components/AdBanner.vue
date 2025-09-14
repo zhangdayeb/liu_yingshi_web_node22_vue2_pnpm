@@ -1,24 +1,22 @@
 <template>
-  <div v-if="ads.length > 0" class="ad-banner">
-    <!-- 单张广告 -->
-    <div v-if="ads.length === 1" class="single-ad">
-      <img :src="ads[0].image" :alt="ads[0].title" @click="handleAdClick(ads[0])" />
-    </div>
+  <div class="ad-banner" v-if="adList.length > 0">
+    <!-- 移动端轮播 -->
+    <van-swipe v-if="deviceStore.isMobile" :autoplay="5000" indicator-color="#fff">
+      <van-swipe-item v-for="ad in adList" :key="ad.id">
+        <a :href="ad.jump_url || '#'" target="_blank">
+          <img :src="ad.img_url" :alt="ad.title" />
+        </a>
+      </van-swipe-item>
+    </van-swipe>
     
-    <!-- 多张广告轮播 -->
-    <div v-else class="ad-carousel">
-      <van-swipe v-if="deviceStore.isMobile" :autoplay="5000" indicator-color="#fff">
-        <van-swipe-item v-for="ad in ads" :key="ad.id">
-          <img :src="ad.image" :alt="ad.title" @click="handleAdClick(ad)" />
-        </van-swipe-item>
-      </van-swipe>
-      
-      <el-carousel v-else height="120px" :interval="5000">
-        <el-carousel-item v-for="ad in ads" :key="ad.id">
-          <img :src="ad.image" :alt="ad.title" @click="handleAdClick(ad)" />
-        </el-carousel-item>
-      </el-carousel>
-    </div>
+    <!-- PC端轮播 -->
+    <el-carousel v-if="!deviceStore.isMobile" height="160px" :interval="5000" arrow="always">
+      <el-carousel-item v-for="ad in adList" :key="ad.id">
+        <a :href="ad.jump_url || '#'" target="_blank">
+          <img :src="ad.img_url" :alt="ad.title" />
+        </a>
+      </el-carousel-item>
+    </el-carousel>
   </div>
 </template>
 
@@ -27,41 +25,29 @@ import { ref, onMounted } from 'vue'
 import { useDeviceStore } from '@/stores/device'
 import { adApi } from '@/api/ad'
 
-const props = defineProps({
-  position: {
-    type: String,
-    required: true
-  }
-})
-
 const deviceStore = useDeviceStore()
-const ads = ref([])
+const adList = ref([])
 
-onMounted(async () => {
+// 加载广告
+const loadAds = async () => {
   try {
-    // 模拟广告数据，实际应从API获取
-    // const res = await adApi.getAds(props.position)
-    // ads.value = res.data
+    // 移动端 type_id = 1, PC端 type_id = 2
+    const typeId = deviceStore.isMobile ? 1 : 2
+    const res = await adApi.getAdList(typeId)
     
-    // 临时模拟数据
-    ads.value = [
-      {
-        id: 1,
-        title: '广告1',
-        image: 'https://via.placeholder.com/1920x120',
-        link: 'https://example.com'
-      }
-    ]
+    if (res.code === 200 && res.data) {
+      adList.value = res.data
+    }
   } catch (error) {
-    console.error('获取广告失败:', error)
-  }
-})
-
-const handleAdClick = (ad) => {
-  if (ad.link) {
-    window.open(ad.link, '_blank')
+    console.error('加载广告失败:', error)
+    adList.value = []
   }
 }
+
+// 组件挂载时自动加载
+onMounted(() => {
+  loadAds()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -69,18 +55,52 @@ const handleAdClick = (ad) => {
   width: 100%;
   margin-bottom: 10px;
   
-  .single-ad, .ad-carousel {
-    img {
-      width: 100%;
-      height: auto;
-      cursor: pointer;
-      display: block;
+  // 移动端轮播
+  :deep(.van-swipe) {
+    width: 100%;
+    height: 100px;
+    
+    .van-swipe-item {
+      a {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
     }
   }
   
-  @media (max-width: 768px) {
-    .ad-banner {
-      margin-bottom: 5px;
+  // PC端轮播
+  :deep(.el-carousel) {
+    width: 100%;
+    
+    .el-carousel__item {
+      a {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+    
+    // 箭头样式
+    .el-carousel__arrow {
+      background-color: rgba(31, 45, 61, 0.5);
+      color: #fff;
+      
+      &:hover {
+        background-color: rgba(31, 45, 61, 0.8);
+      }
     }
   }
 }
