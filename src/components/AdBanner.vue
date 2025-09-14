@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useDeviceStore } from '@/store/device'
+import { useDeviceStore } from '@/stores/device'
 import { adApi } from '@/api/ad'
 
 const props = defineProps({

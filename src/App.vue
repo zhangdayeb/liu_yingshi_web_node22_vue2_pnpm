@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useDeviceStore } from '@/store/device'
+import { useDeviceStore } from '@/stores/device'
 
 const deviceStore = useDeviceStore()
 

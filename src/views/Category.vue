@@ -84,8 +84,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useDeviceStore } from '@/store/device'
-import { useMovieStore } from '@/store/movie'
+import { useDeviceStore } from '@/stores/device'
+import { useMovieStore } from '@/stores/movie'
 import MovieCard from '@/components/MovieCard.vue'
 
 const router = useRouter()

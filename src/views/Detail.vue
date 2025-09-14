@@ -81,7 +81,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useDeviceStore } from '@/store/device'
+import { useDeviceStore } from '@/stores/device'
 import { movieApi } from '@/api/movie'
 
 const route = useRoute()

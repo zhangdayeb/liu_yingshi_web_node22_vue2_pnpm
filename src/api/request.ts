@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { showToast, showLoadingToast, closeToast } from 'vant'
 import { ElMessage } from 'element-plus'
-import { useDeviceStore } from '@/store/device'
+import { useDeviceStore } from '@/stores/device'
 
 const request = axios.create({
   timeout: 30000
