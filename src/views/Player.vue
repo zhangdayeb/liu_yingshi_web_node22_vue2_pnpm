@@ -1,5 +1,14 @@
 <template>
   <div class="player-page">
+    <!-- 顶部导航栏 -->
+    <div class="player-header">
+      <button class="back-button" @click="goBack">
+        <span class="back-icon">←</span>
+        返回详情
+      </button>
+      <h1 class="player-title">{{ movieInfo?.video_title || '加载中...' }}</h1>
+    </div>
+
     <!-- 视频播放器 -->
     <div class="player-container">
       <video 
@@ -50,11 +59,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { movieApi } from '@/api/movie'
 
 // 路由
 const route = useRoute()
+const router = useRouter()
 
 // DOM引用
 const videoRef = ref<HTMLVideoElement>(null)
@@ -77,6 +87,14 @@ onMounted(() => {
 onUnmounted(() => {
   destroyHls()
 })
+
+/**
+ * 返回详情页
+ */
+function goBack() {
+  const movieId = route.params.id
+  router.push(`/detail/${movieId}`)
+}
 
 /**
  * 初始化
@@ -340,6 +358,50 @@ function switchSource(index: number) {
   width: 100%;
   min-height: 100vh;
   background: #000;
+  
+  .player-header {
+    background: #1a1a1a;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #333;
+    
+    .back-button {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid #666;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 14px;
+      
+      &:hover {
+        background: #333;
+        border-color: #409eff;
+        color: #409eff;
+      }
+      
+      .back-icon {
+        font-size: 18px;
+        margin-right: 5px;
+      }
+    }
+    
+    .player-title {
+      flex: 1;
+      margin: 0;
+      padding: 0 20px;
+      font-size: 18px;
+      font-weight: normal;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
   
   .player-container {
     width: 100%;
